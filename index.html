@@ -2,84 +2,152 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>README Generator</title>
+<title>GitHub README Generator</title>
+
 <style>
 body {
   font-family: sans-serif;
-  max-width: 800px;
+  max-width: 900px;
   margin: 40px auto;
 }
 
-input, textarea, button {
-  width: 100%;
+input, button {
   padding: 10px;
+  width: 100%;
+  margin: 5px 0;
+}
+
+.card {
+  border: 1px solid #ddd;
+  padding: 15px;
   margin: 10px 0;
+  border-radius: 8px;
 }
 
 pre {
-  background: #111;
-  color: #eee;
-  padding: 20px;
-  white-space: pre-wrap;
+  background:#111;
+  color:white;
+  padding:20px;
+  white-space:pre-wrap;
 }
 </style>
+
 </head>
 
 <body>
 
-<h1>README Generator</h1>
+<h1>GitHub README Generator</h1>
 
-<input id="name" placeholder="Repository name">
+<input id="user" placeholder="GitHub username">
 
-<textarea id="desc" placeholder="説明"></textarea>
+<button onclick="loadRepos()">
+取得
+</button>
 
-<input id="lang" placeholder="使用技術 (例: JavaScript, Node.js)">
+<div id="projects"></div>
 
-<button onclick="generate()">生成</button>
-
-<pre id="output"></pre>
+<h2>Generated README</h2>
+<pre id="readme"></pre>
 
 
 <script>
-function generate(){
 
-const name =
-document.getElementById("name").value;
+async function loadRepos(){
 
-const desc =
-document.getElementById("desc").value;
-
-const lang =
-document.getElementById("lang").value;
+const username =
+document.getElementById("user").value;
 
 
-const readme = `# ${name}
+const res = await fetch(
+`https://api.github.com/users/${username}/repos?per_page=100`
+);
 
-## 📌 Overview
 
-${desc}
+const repos = await res.json();
 
-## 🛠 Tech Stack
 
-${lang}
+const projects =
+repos
+.filter(repo => !repo.fork)
+.map(repo => {
 
-## 🚀 Features
+return {
+name: repo.name,
+desc: repo.description || "No description",
+lang: repo.language || "Unknown",
+stars: repo.stargazers_count,
+url: repo.html_url
+}
 
-- Feature 1
-- Feature 2
+});
 
-## 📦 Installation
 
-\`\`\`bash
-git clone https://github.com/username/${name}.git
-\`\`\`
+render(projects);
 
-## 📄 License
+generateReadme(projects);
 
-MIT
+}
+
+
+
+function render(projects){
+
+document.getElementById("projects").innerHTML =
+projects.map(p=>`
+
+<div class="card">
+
+<h3>
+${p.name}
+</h3>
+
+<p>
+${p.desc}
+</p>
+
+<p>
+Language: ${p.lang}
+</p>
+
+<p>
+⭐ ${p.stars}
+</p>
+
+<a href="${p.url}">
+GitHub
+</a>
+
+</div>
+
+`).join("");
+
+}
+
+
+
+function generateReadme(projects){
+
+const md =
+`
+# Projects
+
+${projects.map(p=>`
+
+## ${p.name}
+
+${p.desc}
+
+- Language: ${p.lang}
+- ⭐ Stars: ${p.stars}
+
+[Repository](${p.url})
+
+`).join("\n")}
+
 `;
 
-document.getElementById("output").textContent = readme;
+
+document.getElementById("readme").textContent = md;
 
 }
 
