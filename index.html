@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>README Generator</title>
+<style>
+body {
+  font-family: sans-serif;
+  max-width: 800px;
+  margin: 40px auto;
+}
+
+input, textarea, button {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+pre {
+  background: #111;
+  color: #eee;
+  padding: 20px;
+  white-space: pre-wrap;
+}
+</style>
+</head>
+
+<body>
+
+<h1>README Generator</h1>
+
+<input id="name" placeholder="Repository name">
+
+<textarea id="desc" placeholder="説明"></textarea>
+
+<input id="lang" placeholder="使用技術 (例: JavaScript, Node.js)">
+
+<button onclick="generate()">生成</button>
+
+<pre id="output"></pre>
+
+
+<script>
+function generate(){
+
+const name =
+document.getElementById("name").value;
+
+const desc =
+document.getElementById("desc").value;
+
+const lang =
+document.getElementById("lang").value;
+
+
+const readme = `# ${name}
+
+## 📌 Overview
+
+${desc}
+
+## 🛠 Tech Stack
+
+${lang}
+
+## 🚀 Features
+
+- Feature 1
+- Feature 2
+
+## 📦 Installation
+
+\`\`\`bash
+git clone https://github.com/username/${name}.git
+\`\`\`
+
+## 📄 License
+
+MIT
+`;
+
+document.getElementById("output").textContent = readme;
+
+}
+
+</script>
+
+</body>
+</html>
