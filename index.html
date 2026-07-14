@@ -2,154 +2,218 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>GitHub README Generator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simple GitHub README Generator</title>
 
 <style>
-body {
-  font-family: sans-serif;
-  max-width: 900px;
-  margin: 40px auto;
+body{
+    font-family:system-ui,sans-serif;
+    max-width:1000px;
+    margin:40px auto;
+    background:#f6f8fa;
+    padding:20px;
 }
-
-input, button {
-  padding: 10px;
-  width: 100%;
-  margin: 5px 0;
+h1{margin-top:0}
+input,select,button{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    font-size:15px;
 }
-
-.card {
-  border: 1px solid #ddd;
-  padding: 15px;
-  margin: 10px 0;
-  border-radius: 8px;
+button{
+    cursor:pointer;
 }
-
-pre {
-  background:#111;
-  color:white;
-  padding:20px;
-  white-space:pre-wrap;
+pre{
+    background:#0d1117;
+    color:#c9d1d9;
+    padding:20px;
+    overflow:auto;
+    border-radius:8px;
+    white-space:pre-wrap;
 }
+.card{
+    background:white;
+    padding:15px;
+    border-radius:8px;
+    margin:10px 0;
+}
+small{color:#666;}
 </style>
-
 </head>
-
 <body>
 
 <h1>GitHub README Generator</h1>
 
-<input id="user" placeholder="GitHub username">
+<input id="user" placeholder="GitHub Username">
 
-<button onclick="loadRepos()">
-取得
-</button>
+<button onclick="loadRepos()">Load Repositories</button>
 
-<div id="projects"></div>
+<select id="repoList"></select>
 
-<h2>Generated README</h2>
-<pre id="readme"></pre>
+<button onclick="generate()">Generate README</button>
 
+<div id="info"></div>
+
+<pre id="output"></pre>
 
 <script>
 
+let repos=[];
+
 async function loadRepos(){
 
-const username =
-document.getElementById("user").value;
+const user=document.getElementById("user").value.trim();
 
+if(!user){
+alert("GitHubユーザー名を入力してください");
+return;
+}
 
-const res = await fetch(
-`https://api.github.com/users/${username}/repos?per_page=100`
+const res=await fetch(`https://api.github.com/users/${user}/repos?per_page=100`);
+
+if(!res.ok){
+alert("取得できませんでした");
+return;
+}
+
+repos=await res.json();
+
+const list=document.getElementById("repoList");
+
+list.innerHTML=repos
+.filter(r=>!r.fork)
+.map(r=>`<option value="${r.name}">${r.name}</option>`)
+.join("");
+
+}
+
+async function generate(){
+
+const user=document.getElementById("user").value.trim();
+const repo=document.getElementById("repoList").value;
+
+if(!repo)return;
+
+const repoInfo=repos.find(r=>r.name===repo);
+
+const treeRes=await fetch(
+`https://api.github.com/repos/${user}/${repo}/git/trees/${repoInfo.default_branch}?recursive=1`
 );
 
+const tree=await treeRes.json();
 
-const repos = await res.json();
+const files=tree.tree.map(f=>f.path);
 
+const stack=[];
 
-const projects =
-repos
-.filter(repo => !repo.fork)
-.map(repo => {
+const has=f=>files.some(x=>x.toLowerCase()==f.toLowerCase());
 
-return {
-name: repo.name,
-desc: repo.description || "No description",
-lang: repo.language || "Unknown",
-stars: repo.stargazers_count,
-url: repo.html_url
-}
+const hasExt=e=>files.some(x=>x.endsWith(e));
 
-});
+if(has("package.json")) stack.push("Node.js");
+if(has("requirements.txt")) stack.push("Python");
+if(has("Cargo.toml")) stack.push("Rust");
+if(has("go.mod")) stack.push("Go");
+if(has("composer.json")) stack.push("PHP");
+if(has("pom.xml")) stack.push("Java");
+if(has("Dockerfile")) stack.push("Docker");
 
+if(has("vite.config.js")||has("vite.config.ts")) stack.push("Vite");
+if(has("next.config.js")) stack.push("Next.js");
+if(has("nuxt.config.ts")) stack.push("Nuxt");
+if(has("angular.json")) stack.push("Angular");
 
-render(projects);
+if(hasExt(".html")) stack.push("HTML");
+if(hasExt(".css")) stack.push("CSS");
+if(hasExt(".js")) stack.push("JavaScript");
+if(hasExt(".ts")) stack.push("TypeScript");
+if(hasExt(".py")) stack.push("Python");
+if(hasExt(".java")) stack.push("Java");
+if(hasExt(".cpp")) stack.push("C++");
+if(hasExt(".cs")) stack.push("C#");
 
-generateReadme(projects);
+const unique=[...new Set(stack)];
 
-}
+let projectType="Application";
 
+if(has("index.html")&&!has("package.json"))
+projectType="Static Website";
 
+if(has("package.json"))
+projectType="Node.js Project";
 
-function render(projects){
+if(has("requirements.txt"))
+projectType="Python Project";
 
-document.getElementById("projects").innerHTML =
-projects.map(p=>`
+const md=`# ${repoInfo.name}
 
-<div class="card">
+${repoInfo.description||"Project description"}
 
-<h3>
-${p.name}
-</h3>
+## Overview
 
-<p>
-${p.desc}
-</p>
+This repository contains a ${projectType.toLowerCase()}.
 
-<p>
-Language: ${p.lang}
-</p>
+## Tech Stack
 
-<p>
-⭐ ${p.stars}
-</p>
+${unique.map(x=>"- "+x).join("\n")||"- Unknown"}
 
-<a href="${p.url}">
-GitHub
-</a>
+## Repository
 
-</div>
+${repoInfo.html_url}
 
-`).join("");
+## Statistics
 
-}
+- ⭐ Stars: ${repoInfo.stargazers_count}
+- 🍴 Forks: ${repoInfo.forks_count}
+- 👀 Watchers: ${repoInfo.watchers_count}
 
+## File Count
 
+${files.length}
 
-function generateReadme(projects){
+## Main Files
 
-const md =
-`
-# Projects
+${files.slice(0,25).map(f=>"- "+f).join("\n")}
 
-${projects.map(p=>`
+## Installation
 
-## ${p.name}
+See repository documentation for installation instructions.
 
-${p.desc}
+## License
 
-- Language: ${p.lang}
-- ⭐ Stars: ${p.stars}
+${repoInfo.license?repoInfo.license.name:"Not specified"}
 
-[Repository](${p.url})
-
-`).join("\n")}
-
+---
+Generated automatically.
 `;
 
+document.getElementById("output").textContent=md;
 
-document.getElementById("readme").textContent = md;
+document.getElementById("info").innerHTML=`
+<div class="card">
+<b>${repoInfo.name}</b><br>
+${repoInfo.description||"No description"}<br><br>
+
+⭐ ${repoInfo.stargazers_count}
+　
+🍴 ${repoInfo.forks_count}
+　
+📁 ${files.length} files
+<br><br>
+
+<small>
+Detected:
+${unique.join(", ")||"Unknown"}
+</small>
+
+</div>
+`;
 
 }
+
+document.addEventListener("keydown",e=>{
+if(e.ctrlKey&&e.key==="c") return;
+});
 
 </script>
 
